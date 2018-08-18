@@ -2,6 +2,7 @@ const validator = require('validator');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const _ = require('lodash');
+const bcrypt = require('bcryptjs');
 mongoose.Promise = global.Promise;
 
 mongoose.connect('mongodb://localhost:27017/TodoApp');
@@ -71,7 +72,7 @@ UserSchema.methods.generateAuthToken = function(){
 
 	return user.save().then(()=>{
 		return token;
-	})
+	});
 };
 
 
@@ -90,7 +91,21 @@ UserSchema.statics.findByToken = function(token){
 		'tokens.token' : token,
 		'tokens.access' : 'auth'
 	});
-}
+};
+
+UserSchema.pre('save', function(next){
+	var user = this;
+	if(user.isModified('password')){
+		bcrypt.genSalt(10, (err, salt)=>{
+			bcrypt.hash(user.password, salt, (err, hash)=>{
+				this.password = hash;
+				next();
+			});
+		});
+	} else{
+		next();
+	}
+});
 
 var User = mongoose.model('User', UserSchema);
 
